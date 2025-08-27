@@ -1,0 +1,9 @@
+<resources>
+    <string name="app_name">PidaVPN</string>
+    <string name="connect">اتصال</string>
+    <string name="disconnect">قطع اتصال</string>
+    <string name="ready_to_connect">آماده برای اتصال</string>
+    <string name="connected">متصل به: %s</string>
+    <string name="connecting">در حال اتصال به سرور...</string>
+    <string name="disconnected">اتصال قطع شد</string>
+</resources>
