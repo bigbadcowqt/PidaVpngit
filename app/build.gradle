@@ -33,7 +33,7 @@ dependencies {
     
     // کتابخانه‌های لازم برای VPN
     implementation 'org.slf4j:slf4j-android:1.7.36'
-    implementation 'com.github.shadowsocks:libv2ray:4.4.0'
+    implementation 'com.github.shadowsocks:v2ray-core:5.12.0'
     implementation 'androidx.preference:preference:1.2.0'
     
     // کتابخانه برای مدیریت کانفیگ‌های JSON
