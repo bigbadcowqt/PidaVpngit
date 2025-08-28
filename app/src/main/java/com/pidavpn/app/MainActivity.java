@@ -22,22 +22,20 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.net.URLDecoder;
 
 public class MainActivity extends AppCompatActivity implements AdapterView.OnItemSelectedListener {
     private Button connectButton, exportButton;
     private TextView statusText;
     private Spinner configSpinner;
     
-    // کانفیگ‌های واقعی شما
+    // کانفیگ‌های واقعی شما - دقیقاً مطابق با فرمت ارسالی
     private final String[] vpnConfigs = {
-        // کانفیگ شماره 1
-        "{\"name\": \"کانفیگ ۱ - yy8443\", \"protocol\": \"vless\", \"server\": \"104.21.33.70\", \"port\": 8443, \"id\": \"d1563ff5-b87c-41a2-ab52-315a5251783b\", \"host\": \"white-tooth-0914.motilew530.workers.dev\", \"path\": \"/SfCL44HuPKPyhBBf?ed=2560\", \"security\": \"tls\"}",
+        // کانفیگ اصلی شما به صورت لینک VLESS
+        "vless://d1563ff5-b87c-41a2-ab52-315a5251783b@104.24.69.25:8443?path=%2FSfCL44HuPKPyhBBf%3Fed%3D2560&security=tls&alpn=http%2F1.1&encryption=none&host=white-tooth-0914.motilew530.workers.dev&type=ws&sni=white-tooth-0914.motilew530.workers.dev#proxy",
         
-        // کانفیگ شماره 2
-        "{\"name\": \"کانفیگ ۲ - Ali\", \"protocol\": \"vless\", \"server\": \"104.24.72.159\", \"port\": 8443, \"id\": \"d1563ff5-b87c-41a2-ab52-315a5251783b\", \"host\": \"white-tooth-0914.motilew530.workers.dev\", \"path\": \"/SfCL44HuPKPyhBBf?ed\", \"security\": \"tls\"}",
-        
-        // کانفیگ شماره 3
-        "{\"name\": \"کانفیگ ۳ - Domain\", \"protocol\": \"vless\", \"server\": \"www.speedtest.net\", \"port\": 443, \"id\": \"d29debb4-5df3-424e-85c5-e2dffa095ec0\", \"host\": \"amoozesh-enl.pages.dev\", \"path\": \"/V0cJso6c0RXNrfEp\", \"security\": \"tls\"}"
+        // کانفیگ‌های اضافی (در صورت نیاز می‌توانید اضافه کنید)
+        "vless://d29debb4-5df3-424e-85c5-e2dffa095ec0@www.speedtest.net:443?path=%2FV0cJso6c0RXNrfEp%2FMTA0LjI0LjU0Ljc1LDEwNC4yNC4zOC4yNTMsMTg4LjI0NC4xMjIuNTMsMTYyLjE1OC4xNDguNzQsMTYyLjE1OC4xNjcuMjYsMTA0LjI0LjYyLjM0LDE2Mi4xNTguMTc5LjEwMSwxMDQuMjQuMjkuMjQ2LDE4OC4xMTQuMTExLjk3LDEwNC4yNC4zOC41MCwxMDQuMjQuMzguMjUzLDEwNC4yNC4yOS40LDEwNC4yNC41NC4xMjMsMTcyLjY0LjQxLjIxOSwxMDQuMjQuNTQuMjcsMTcyLjY0LjQxLjIyMSwxODUuMjIxLjE2MC43MiwwLjAsMC4wLDEwNC4yNC41NC4xNDE%3Ed%3D2560&security=tls&alpn=http%2F1.1&encryption=none&host=amoozesh-enl.pages.dev&type=ws&sni=amoozesh-enl.pages.dev#%F0%9F%92%A6%202%20-%20VLESS%20-%20Domain%20%3A%20443"
     };
     
     private int currentConfigIndex = 0;
@@ -84,9 +82,17 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
         String[] configNames = new String[vpnConfigs.length];
         for (int i = 0; i < vpnConfigs.length; i++) {
             try {
-                Gson gson = new Gson();
-                JsonObject config = gson.fromJson(vpnConfigs[i], JsonObject.class);
-                configNames[i] = config.get("name").getAsString();
+                // اگر لینک VLESS است، نام را از fragment بردارید
+                if (vpnConfigs[i].startsWith("vless://")) {
+                    Uri uri = Uri.parse(vpnConfigs[i]);
+                    String fragment = uri.getFragment();
+                    configNames[i] = fragment != null ? fragment : "کانفیگ " + (i + 1);
+                } else {
+                    // اگر JSON است، نام را از فیلد name بردارید
+                    Gson gson = new Gson();
+                    JsonObject config = gson.fromJson(vpnConfigs[i], JsonObject.class);
+                    configNames[i] = config.get("name").getAsString();
+                }
             } catch (Exception e) {
                 configNames[i] = "کانفیگ " + (i + 1);
             }
@@ -100,47 +106,70 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
     }
     
     private void connectWithVpnApp() {
-        String configJson = vpnConfigs[currentConfigIndex];
+        String config = vpnConfigs[currentConfigIndex];
         
         try {
-            Gson gson = new Gson();
-            JsonObject config = gson.fromJson(configJson, JsonObject.class);
-            
-            String name = config.get("name").getAsString();
-            String server = config.get("server").getAsString();
-            int port = config.get("port").getAsInt();
-            String id = config.get("id").getAsString();
-            
-            // ایجاد لینک v2ray برای باز کردن برنامه‌های VPN
-            String v2rayLink = String.format("vless://%s@%s:%d?type=ws&security=tls&path=%s&host=%s#%s",
-                id, server, port, 
-                config.get("path").getAsString().split("\\?")[0], // فقط path بدون query参数
-                config.get("host").getAsString(),
-                name.replace(" ", "-"));
-            
-            //尝试用Intent打开VPN程序
-            Intent intent = new Intent(Intent.ACTION_VIEW);
-            intent.setData(Uri.parse(v2rayLink));
-            
-            // اضافه کردن intentهای جایگزین برای برنامه‌های محبوب
-            Intent v2rayNGIntent = new Intent(Intent.ACTION_VIEW);
-            v2rayNGIntent.setData(Uri.parse("v2rayng://install-config/" + Uri.encode(v2rayLink)));
-            
-            Intent clashIntent = new Intent(Intent.ACTION_VIEW);
-            clashIntent.setData(Uri.parse("clash://install-config/" + Uri.encode(configJson)));
-            
-            // ایجاد chooser برای انتخاب برنامه
-            Intent chooser = Intent.createChooser(intent, "اتصال با برنامه VPN");
-            chooser.putExtra(Intent.EXTRA_INITIAL_INTENTS, new Intent[]{v2rayNGIntent, clashIntent});
-            
-            if (intent.resolveActivity(getPackageManager()) != null) {
-                startActivity(chooser);
-                statusText.setText("در حال باز کردن برنامه VPN...");
-                Toast.makeText(this, "باز کردن " + name + " در برنامه VPN", Toast.LENGTH_SHORT).show();
+            // اگر لینک VLESS است، مستقیماً از آن استفاده کنید
+            if (config.startsWith("vless://")) {
+                //尝试用Intent打开VPN程序
+                Intent intent = new Intent(Intent.ACTION_VIEW);
+                intent.setData(Uri.parse(config));
+                
+                // اضافه کردن intentهای جایگزین برای برنامه‌های محبوب
+                Intent v2rayNGIntent = new Intent(Intent.ACTION_VIEW);
+                v2rayNGIntent.setData(Uri.parse("v2rayng://install-config/" + Uri.encode(config)));
+                
+                // ایجاد chooser برای انتخاب برنامه
+                Intent chooser = Intent.createChooser(intent, "اتصال با برنامه VPN");
+                chooser.putExtra(Intent.EXTRA_INITIAL_INTENTS, new Intent[]{v2rayNGIntent});
+                
+                if (intent.resolveActivity(getPackageManager()) != null) {
+                    startActivity(chooser);
+                    statusText.setText("در حال باز کردن برنامه VPN...");
+                    Toast.makeText(this, "در حال باز کردن برنامه VPN", Toast.LENGTH_SHORT).show();
+                } else {
+                    // اگر برنامه VPN یافت نشد، کانفیگ را export کنیم
+                    Toast.makeText(this, "برنامه VPN یافت نشد. لطفاً از گزینه 'خروجی کانفیگ' استفاده کنید", Toast.LENGTH_LONG).show();
+                    statusText.setText("برنامه VPN یافت نشد. از گزینه خروجی استفاده کنید");
+                }
             } else {
-                // اگر برنامه VPN یافت نشد، کانفیگ را export کنیم
-                Toast.makeText(this, "برنامه VPN یافت نشد. لطفاً از گزینه 'خروجی کانفیگ' استفاده کنید", Toast.LENGTH_LONG).show();
-                statusText.setText("برنامه VPN یافت نشد. از گزینه خروجی استفاده کنید");
+                // اگر JSON است، مانند قبل رفتار کنید
+                Gson gson = new Gson();
+                JsonObject configJson = gson.fromJson(config, JsonObject.class);
+                
+                String name = configJson.get("name").getAsString();
+                String server = configJson.get("server").getAsString();
+                int port = configJson.get("port").getAsInt();
+                String id = configJson.get("id").getAsString();
+                
+                // ایجاد لینک v2ray برای باز کردن برنامه‌های VPN
+                String v2rayLink = String.format("vless://%s@%s:%d?type=ws&security=tls&path=%s&host=%s#%s",
+                    id, server, port, 
+                    configJson.get("path").getAsString().split("\\?")[0],
+                    configJson.get("host").getAsString(),
+                    name.replace(" ", "-"));
+                
+                //尝试用Intent打开VPN程序
+                Intent intent = new Intent(Intent.ACTION_VIEW);
+                intent.setData(Uri.parse(v2rayLink));
+                
+                // اضافه کردن intentهای جایگزین برای برنامه‌های محبوب
+                Intent v2rayNGIntent = new Intent(Intent.ACTION_VIEW);
+                v2rayNGIntent.setData(Uri.parse("v2rayng://install-config/" + Uri.encode(v2rayLink)));
+                
+                // ایجاد chooser برای انتخاب برنامه
+                Intent chooser = Intent.createChooser(intent, "اتصال با برنامه VPN");
+                chooser.putExtra(Intent.EXTRA_INITIAL_INTENTS, new Intent[]{v2rayNGIntent});
+                
+                if (intent.resolveActivity(getPackageManager()) != null) {
+                    startActivity(chooser);
+                    statusText.setText("در حال باز کردن برنامه VPN...");
+                    Toast.makeText(this, "باز کردن " + name + " در برنامه VPN", Toast.LENGTH_SHORT).show();
+                } else {
+                    // اگر برنامه VPN یافت نشد، کانفیگ را export کنیم
+                    Toast.makeText(this, "برنامه VPN یافت نشد. لطفاً از گزینه 'خروجی کانفیگ' استفاده کنید", Toast.LENGTH_LONG).show();
+                    statusText.setText("برنامه VPN یافت نشد. از گزینه خروجی استفاده کنید");
+                }
             }
             
         } catch (Exception e) {
@@ -158,17 +187,30 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
     
     private void exportConfig() {
         try {
-            String configJson = vpnConfigs[currentConfigIndex];
-            Gson gson = new Gson();
-            JsonObject config = gson.fromJson(configJson, JsonObject.class);
+            String config = vpnConfigs[currentConfigIndex];
+            String fileName;
+            String content;
             
-            String fileName = config.get("name").getAsString().replace(" ", "_") + ".json";
+            if (config.startsWith("vless://")) {
+                // برای لینک VLESS
+                Uri uri = Uri.parse(config);
+                String fragment = uri.getFragment();
+                fileName = (fragment != null ? fragment : "config") + ".vless";
+                content = config;
+            } else {
+                // برای JSON
+                Gson gson = new Gson();
+                JsonObject configJson = gson.fromJson(config, JsonObject.class);
+                fileName = configJson.get("name").getAsString().replace(" ", "_") + ".json";
+                content = config;
+            }
+            
             File downloadsDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS);
             File configFile = new File(downloadsDir, fileName);
             
             // ذخیره کانفیگ در فایل
             FileOutputStream fos = new FileOutputStream(configFile);
-            fos.write(configJson.getBytes(StandardCharsets.UTF_8));
+            fos.write(content.getBytes(StandardCharsets.UTF_8));
             fos.close();
             
             statusText.setText("کانفیگ ذخیره شد: " + fileName);
@@ -186,7 +228,7 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
         Uri fileUri = FileProvider.getUriForFile(this, getPackageName() + ".provider", file);
         
         Intent shareIntent = new Intent(Intent.ACTION_SEND);
-        shareIntent.setType("application/json");
+        shareIntent.setType("text/plain");
         shareIntent.putExtra(Intent.EXTRA_STREAM, fileUri);
         shareIntent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
         
@@ -224,14 +266,24 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
     
     private void shareConfigContent() {
         try {
-            String configJson = vpnConfigs[currentConfigIndex];
-            Gson gson = new Gson();
-            JsonObject config = gson.fromJson(configJson, JsonObject.class);
+            String config = vpnConfigs[currentConfigIndex];
             
             Intent shareIntent = new Intent(Intent.ACTION_SEND);
             shareIntent.setType("text/plain");
-            shareIntent.putExtra(Intent.EXTRA_TEXT, configJson);
-            shareIntent.putExtra(Intent.EXTRA_SUBJECT, config.get("name").getAsString() + " Configuration");
+            shareIntent.putExtra(Intent.EXTRA_TEXT, config);
+            
+            String subject;
+            if (config.startsWith("vless://")) {
+                Uri uri = Uri.parse(config);
+                String fragment = uri.getFragment();
+                subject = fragment != null ? fragment : "VLESS Configuration";
+            } else {
+                Gson gson = new Gson();
+                JsonObject configJson = gson.fromJson(config, JsonObject.class);
+                subject = configJson.get("name").getAsString() + " Configuration";
+            }
+            
+            shareIntent.putExtra(Intent.EXTRA_SUBJECT, subject);
             
             startActivity(Intent.createChooser(shareIntent, "اشتراک‌گذاری کانفیگ"));
             
@@ -246,13 +298,28 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
         currentConfigIndex = position;
         
         try {
-            Gson gson = new Gson();
-            JsonObject config = gson.fromJson(vpnConfigs[position], JsonObject.class);
-            String name = config.get("name").getAsString();
-            String server = config.get("server").getAsString();
-            int port = config.get("port").getAsInt();
+            String config = vpnConfigs[position];
             
-            statusText.setText(String.format("انتخاب شده: %s\nسرور: %s:%d", name, server, port));
+            if (config.startsWith("vless://")) {
+                // برای لینک VLESS
+                Uri uri = Uri.parse(config);
+                String fragment = uri.getFragment();
+                String host = uri.getHost();
+                int port = uri.getPort();
+                
+                statusText.setText(String.format("انتخاب شده: %s\nسرور: %s:%d", 
+                    fragment != null ? fragment : "کانفیگ VLESS", 
+                    host, port));
+            } else {
+                // برای JSON
+                Gson gson = new Gson();
+                JsonObject configJson = gson.fromJson(config, JsonObject.class);
+                String name = configJson.get("name").getAsString();
+                String server = configJson.get("server").getAsString();
+                int port = configJson.get("port").getAsInt();
+                
+                statusText.setText(String.format("انتخاب شده: %s\nسرور: %s:%d", name, server, port));
+            }
         } catch (Exception e) {
             statusText.setText("کانفیگ انتخاب شد: " + (position + 1));
         }
