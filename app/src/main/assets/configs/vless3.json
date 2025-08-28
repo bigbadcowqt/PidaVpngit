@@ -1,0 +1,79 @@
+{
+  "log": {
+    "loglevel": "info"
+  },
+  "inbounds": [
+    {
+      "port": 10808,
+      "listen": "127.0.0.1",
+      "protocol": "socks",
+      "settings": {
+        "auth": "noauth",
+        "udp": true
+      },
+      "sniffing": {
+        "enabled": true,
+        "destOverride": ["http", "tls"]
+      },
+      "tag": "socks-in"
+    }
+  ],
+  "outbounds": [
+    {
+      "protocol": "vless",
+      "settings": {
+        "vnext": [
+          {
+            "address": "104.24.69.25",
+            "port": 8443,
+            "users": [
+              {
+                "id": "d1563ff5-b87c-41a2-ab52-315a5251783b",
+                "encryption": "none"
+              }
+            ]
+          }
+        ]
+      },
+      "streamSettings": {
+        "network": "ws",
+        "security": "tls",
+        "wsSettings": {
+          "path": "/SfCL44HuPKPyhBBf?ed=2560",
+          "headers": {
+            "Host": "white-tooth-0914.motilew530.workers.dev"
+          }
+        },
+        "tlsSettings": {
+          "serverName": "white-tooth-0914.motilew530.workers.dev",
+          "alpn": ["http/1.1"],
+          "allowInsecure": false
+        },
+        "sockopt": {
+          "tcpNoDelay": true,
+          "reusePort": true
+        }
+      },
+      "tag": "proxy"
+    },
+    {
+      "protocol": "freedom",
+      "settings": {},
+      "tag": "direct"
+    }
+  ],
+  "dns": {
+    "servers": ["https://9.9.9.9/dns-query"],
+    "queryStrategy": "UseIP"
+  },
+  "routing": {
+    "domainStrategy": "IPIfNonMatch",
+    "rules": [
+      {
+        "type": "field",
+        "inboundTag": ["socks-in"],
+        "outboundTag": "proxy"
+      }
+    ]
+  }
+}
