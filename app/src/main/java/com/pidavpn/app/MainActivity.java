@@ -14,11 +14,16 @@ public class MainActivity extends AppCompatActivity {
     private TextView statusText;
     private boolean isConnected = false;
     
-    // نمونه کانفیگ‌های V2Ray (موقت - بعداً با کانفیگ‌های واقعی جایگزین می‌شود)
+    // کانفیگ‌های واقعی شما
     private final String[] vpnConfigs = {
-        "{\"protocol\": \"vmess\", \"server\": \"server1.example.com\", \"port\": 443, \"id\": \"your-uuid-here\"}",
-        "{\"protocol\": \"vless\", \"server\": \"server2.example.com\", \"port\": 80, \"id\": \"your-uuid-here\"}",
-        "{\"protocol\": \"trojan\", \"server\": \"server3.example.com\", \"port\": 443, \"password\": \"your-password\"}"
+        // کانفیگ شماره 1 (ساده‌شده)
+        "{\"protocol\": \"vless\", \"server\": \"104.21.33.70\", \"port\": 8443, \"id\": \"d1563ff5-b87c-41a2-ab52-315a5251783b\", \"host\": \"white-tooth-0914.motilew530.workers.dev\", \"path\": \"/SfCL44HuPKPyhBBf?ed=2560\", \"security\": \"tls\"}",
+        
+        // کانفیگ شماره 2 (از لینک VLESS)
+        "{\"protocol\": \"vless\", \"server\": \"104.24.72.159\", \"port\": 8443, \"id\": \"d1563ff5-b87c-41a2-ab52-315a5251783b\", \"host\": \"white-tooth-0914.motilew530.workers.dev\", \"path\": \"/SfCL44HuPKPyhBBf?ed\", \"security\": \"tls\"}",
+        
+        // کانفیگ شماره 3 (از لینک VLESS)
+        "{\"protocol\": \"vless\", \"server\": \"www.speedtest.net\", \"port\": 443, \"id\": \"d29debb4-5df3-424e-85c5-e2dffa095ec0\", \"host\": \"amoozesh-enl.pages.dev\", \"path\": \"/V0cJso6c0RXNrfEp\", \"security\": \"tls\"}"
     };
     
     private int currentConfigIndex = 0;
@@ -65,20 +70,22 @@ public class MainActivity extends AppCompatActivity {
                 String server = config.get("server").getAsString();
                 int port = config.get("port").getAsInt();
                 String protocol = config.get("protocol").getAsString();
+                String id = config.get("id").getAsString();
                 
                 // شبیه‌سازی اتصال
                 isConnected = true;
                 updateUI();
                 
                 // نمایش اطلاعات اتصال
-                statusText.setText("متصل به: " + server + ":" + port + " (" + protocol + ")");
+                String statusMessage = String.format("متصل به: %s:%d\\nپروتکل: %s\\nID: %s", 
+                    server, port, protocol, id.substring(0, 8) + "...");
+                statusText.setText(statusMessage);
+                
                 Toast.makeText(this, "اتصال برقرار شد", Toast.LENGTH_SHORT).show();
                 
             } catch (Exception e) {
-                Toast.makeText(this, "خطا در پردازش کانفیگ", Toast.LENGTH_SHORT).show();
+                Toast.makeText(this, "خطا در پردازش کانفیگ: " + e.getMessage(), Toast.LENGTH_SHORT).show();
             }
-        } else {
-            Toast.makeText(this, "لطفاً ابتدا کانفیگ اضافه کنید", Toast.LENGTH_SHORT).show();
         }
     }
     
