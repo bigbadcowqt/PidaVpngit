@@ -25,7 +25,7 @@
         android:id="@+id/connectButton"
         android:layout_width="match_parent"
         android:layout_height="60dp"
-        android:text="اتصال با برنامه VPN"
+        android:text="اتصال VPN"
         android:textSize="18sp"
         android:layout_marginBottom="10dp"/>
 
@@ -33,7 +33,7 @@
         android:id="@+id/disconnectButton"
         android:layout_width="match_parent"
         android:layout_height="60dp"
-        android:text="خروجی گرفتن کانفیگ"
+        android:text="قطع اتصال"
         android:textSize="18sp"
         android:layout_marginBottom="20dp"/>
 
@@ -44,7 +44,6 @@
         android:text="آماده برای اتصال"
         android:textSize="16sp"
         android:gravity="center"
-        android:layout_marginTop="20dp"
-        android:lineSpacingMultiplier="1.2"/>
+        android:layout_marginTop="20dp"/>
 
 </LinearLayout>

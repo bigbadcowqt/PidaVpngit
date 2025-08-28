@@ -24,7 +24,7 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
     private static final int VPN_REQUEST_CODE = 1;
     private boolean isConnected = false;
     
-    // کانفیگ‌های واقعی شما
+    // کانفیگ‌های شما
     private final String[] vpnConfigs = {
         "vless://d1563ff5-b87c-41a2-ab52-315a5251783b@104.24.69.25:8443?path=%2FSfCL44HuPKPyhBBf%3Fed%3D2560&security=tls&alpn=http%2F1.1&encryption=none&host=white-tooth-0914.motilew530.workers.dev&type=ws&sni=white-tooth-0914.motilew530.workers.dev#proxy"
     };
@@ -65,26 +65,29 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
             @Override
             public void onReceive(Context context, Intent intent) {
                 String status = intent.getStringExtra("status");
+                String message = intent.getStringExtra("message");
+                
                 if ("connected".equals(status)) {
                     isConnected = true;
                     updateUI();
                     statusText.setText("متصل شده");
-                    Toast.makeText(MainActivity.this, "اتصال VPN برقرار شد", Toast.LENGTH_SHORT).show();
+                    Toast.makeText(MainActivity.this, message, Toast.LENGTH_SHORT).show();
                 } else if ("disconnected".equals(status)) {
                     isConnected = false;
                     updateUI();
                     statusText.setText("قطع ارتباط");
-                    Toast.makeText(MainActivity.this, "اتصال VPN قطع شد", Toast.LENGTH_SHORT).show();
+                    Toast.makeText(MainActivity.this, message, Toast.LENGTH_SHORT).show();
                 } else if ("error".equals(status)) {
-                    String message = intent.getStringExtra("message");
                     statusText.setText("خطا: " + message);
-                    Toast.makeText(MainActivity.this, "خطا در اتصال VPN: " + message, Toast.LENGTH_LONG).show();
+                    Toast.makeText(MainActivity.this, message, Toast.LENGTH_LONG).show();
                 }
             }
         };
         
         LocalBroadcastManager.getInstance(this)
             .registerReceiver(vpnStatusReceiver, new IntentFilter("vpn_status"));
+        
+        updateUI();
     }
     
     @Override
@@ -124,10 +127,8 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
     }
     
     private void startVpnService() {
-        String config = vpnConfigs[currentConfigIndex];
         Intent intent = new Intent(this, V2RayVpnService.class);
         intent.setAction("connect");
-        intent.putExtra("config", config);
         startService(intent);
         statusText.setText("در حال اتصال...");
     }
@@ -139,6 +140,7 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
             startVpnService();
         } else if (requestCode == VPN_REQUEST_CODE && resultCode == RESULT_CANCELED) {
             Toast.makeText(this, "اجازه VPN داده نشد", Toast.LENGTH_SHORT).show();
+            statusText.setText("اجازه VPN داده نشد");
         }
     }
     
