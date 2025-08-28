@@ -127,8 +127,10 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
     }
     
     private void startVpnService() {
+        String config = vpnConfigs[currentConfigIndex];
         Intent intent = new Intent(this, V2RayVpnService.class);
         intent.setAction("connect");
+        intent.putExtra("config", config);
         startService(intent);
         statusText.setText("در حال اتصال...");
     }

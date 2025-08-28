@@ -5,6 +5,7 @@ plugins {
 android {
     compileSdkVersion 33
     buildToolsVersion "30.0.3"
+    ndkVersion "23.1.7779620"
 
     defaultConfig {
         applicationId "com.pidavpn.app"
@@ -12,6 +13,10 @@ android {
         targetSdkVersion 33
         versionCode 1
         versionName "1.0"
+        
+        ndk {
+            abiFilters "armeabi-v7a", "arm64-v8a", "x86", "x86_64"
+        }
     }
 
     buildTypes {
@@ -24,12 +29,21 @@ android {
         sourceCompatibility JavaVersion.VERSION_1_8
         targetCompatibility JavaVersion.VERSION_1_8
     }
+    
+    externalNativeBuild {
+        cmake {
+            path "CMakeLists.txt"
+        }
+    }
 }
 
 dependencies {
     implementation 'androidx.appcompat:appcompat:1.6.1'
     implementation 'com.google.android.material:material:1.9.0'
     implementation 'androidx.constraintlayout:constraintlayout:2.1.4'
+    
+    // کتابخانه LibV2Ray
+    implementation 'com.github.2dust:androidLibV2ray:4.44.0'
     
     // کتابخانه برای مدیریت کانفیگ‌های JSON
     implementation 'com.google.code.gson:gson:2.10.1'
