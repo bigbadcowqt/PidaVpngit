@@ -12,7 +12,7 @@ allprojects {
     repositories {
         google()
         mavenCentral()
-        maven { url 'https://jitpack.io' }  // اضافه کردن JitPack repository
+        maven { url 'https://jitpack.io' }  // JitPack repository
     }
 }
 
