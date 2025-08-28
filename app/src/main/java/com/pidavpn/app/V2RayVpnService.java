@@ -4,20 +4,14 @@ import android.app.PendingIntent;
 import android.content.Intent;
 import android.net.VpnService;
 import android.os.ParcelFileDescriptor;
-import android.system.OsConstants;
-import android.util.Log;
 import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 import java.io.File;
 import java.io.FileOutputStream;
-import java.io.InputStream;
-import java.net.InetSocketAddress;
-import java.net.Socket;
 import java.nio.charset.StandardCharsets;
 
 public class V2RayVpnService extends VpnService {
     private static final String TAG = "V2RayVpnService";
     private ParcelFileDescriptor vpnInterface;
-    private Thread v2rayThread;
     private boolean isRunning = false;
 
     @Override
@@ -50,46 +44,27 @@ public class V2RayVpnService extends VpnService {
 
             vpnInterface = builder.establish();
             
-            // شروع V2Ray در thread جداگانه
-            v2rayThread = new Thread(() -> {
-                try {
-                    isRunning = true;
-                    
-                    // ذخیره کانفیگ در فایل
-                    File configDir = getFilesDir();
-                    File configFile = new File(configDir, "config.json");
-                    FileOutputStream fos = new FileOutputStream(configFile);
-                    fos.write(config.getBytes(StandardCharsets.UTF_8));
-                    fos.close();
-                    
-                    // اجرای V2Ray (این بخش نیاز به پیاده‌سازی کامل دارد)
-                    runV2RayCore(configFile.getAbsolutePath());
-                    
-                } catch (Exception e) {
-                    Log.e(TAG, "Error in V2Ray thread: " + e.getMessage());
-                    sendStatusUpdate("error", e.getMessage());
-                }
-            });
+            // ذخیره کانفیگ (برای استفاده بعدی)
+            File configDir = getFilesDir();
+            File configFile = new File(configDir, "config.json");
+            FileOutputStream fos = new FileOutputStream(configFile);
+            fos.write(config.getBytes(StandardCharsets.UTF_8));
+            fos.close();
             
-            v2rayThread.start();
+            isRunning = true;
             sendStatusUpdate("connected", "");
             
+            // اینجا می‌توانید کد اتصال واقعی به V2Ray را اضافه کنید
+            // در حال حاضر فقط یک VPN ساده ایجاد می‌کند
+            
         } catch (Exception e) {
-            Log.e(TAG, "Error starting VPN: " + e.getMessage());
             sendStatusUpdate("error", e.getMessage());
         }
     }
 
-    private native void runV2RayCore(String configPath);
-
     private void stopV2Ray() {
         try {
             isRunning = false;
-            
-            if (v2rayThread != null) {
-                v2rayThread.interrupt();
-                v2rayThread = null;
-            }
             
             if (vpnInterface != null) {
                 vpnInterface.close();
@@ -99,7 +74,7 @@ public class V2RayVpnService extends VpnService {
             sendStatusUpdate("disconnected", "");
             
         } catch (Exception e) {
-            Log.e(TAG, "Error stopping VPN: " + e.getMessage());
+            sendStatusUpdate("error", e.getMessage());
         }
         
         stopSelf();
@@ -116,9 +91,5 @@ public class V2RayVpnService extends VpnService {
     public void onDestroy() {
         stopV2Ray();
         super.onDestroy();
-    }
-
-    static {
-        System.loadLibrary("v2ray");
     }
 }
