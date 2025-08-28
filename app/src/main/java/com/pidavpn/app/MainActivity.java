@@ -2,6 +2,7 @@ package com.pidavpn.app;
 
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
+import androidx.core.content.FileProvider;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.net.Uri;
@@ -69,12 +70,13 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
         exportButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                exportConfig();
+                if (checkStoragePermission()) {
+                    exportConfig();
+                } else {
+                    requestStoragePermission();
+                }
             }
         });
-        
-        // درخواست مجوزهای لازم
-        requestStoragePermission();
     }
     
     private void setupConfigSpinner() {
@@ -107,39 +109,54 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
             String name = config.get("name").getAsString();
             String server = config.get("server").getAsString();
             int port = config.get("port").getAsInt();
+            String id = config.get("id").getAsString();
             
             // ایجاد لینک v2ray برای باز کردن برنامه‌های VPN
-            String v2rayLink = String.format("vless://%s@%s:%d", 
-                config.get("id").getAsString(), server, port);
+            String v2rayLink = String.format("vless://%s@%s:%d?type=ws&security=tls&path=%s&host=%s#%s",
+                id, server, port, 
+                config.get("path").getAsString().split("\\?")[0], // فقط path بدون query参数
+                config.get("host").getAsString(),
+                name.replace(" ", "-"));
             
             //尝试用Intent打开VPN程序
             Intent intent = new Intent(Intent.ACTION_VIEW);
             intent.setData(Uri.parse(v2rayLink));
             
+            // اضافه کردن intentهای جایگزین برای برنامه‌های محبوب
+            Intent v2rayNGIntent = new Intent(Intent.ACTION_VIEW);
+            v2rayNGIntent.setData(Uri.parse("v2rayng://install-config/" + Uri.encode(v2rayLink)));
+            
+            Intent clashIntent = new Intent(Intent.ACTION_VIEW);
+            clashIntent.setData(Uri.parse("clash://install-config/" + Uri.encode(configJson)));
+            
+            // ایجاد chooser برای انتخاب برنامه
+            Intent chooser = Intent.createChooser(intent, "اتصال با برنامه VPN");
+            chooser.putExtra(Intent.EXTRA_INITIAL_INTENTS, new Intent[]{v2rayNGIntent, clashIntent});
+            
             if (intent.resolveActivity(getPackageManager()) != null) {
-                startActivity(intent);
+                startActivity(chooser);
                 statusText.setText("در حال باز کردن برنامه VPN...");
                 Toast.makeText(this, "باز کردن " + name + " در برنامه VPN", Toast.LENGTH_SHORT).show();
             } else {
                 // اگر برنامه VPN یافت نشد، کانفیگ را export کنیم
-                Toast.makeText(this, "برنامه VPN یافت نشد. در حال خروجی گرفتن از کانفیگ", Toast.LENGTH_SHORT).show();
-                exportConfig();
+                Toast.makeText(this, "برنامه VPN یافت نشد. لطفاً از گزینه 'خروجی کانفیگ' استفاده کنید", Toast.LENGTH_LONG).show();
+                statusText.setText("برنامه VPN یافت نشد. از گزینه خروجی استفاده کنید");
             }
             
         } catch (Exception e) {
-            Toast.makeText(this, "خطا در پردازش کانفیگ", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, "خطا در پردازش کانفیگ: " + e.getMessage(), Toast.LENGTH_SHORT).show();
         }
     }
     
-    private void exportConfig() {
+    private boolean checkStoragePermission() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-            if (checkSelfPermission(android.Manifest.permission.WRITE_EXTERNAL_STORAGE) 
-                != PackageManager.PERMISSION_GRANTED) {
-                requestStoragePermission();
-                return;
-            }
+            return checkSelfPermission(android.Manifest.permission.WRITE_EXTERNAL_STORAGE) 
+                == PackageManager.PERMISSION_GRANTED;
         }
-        
+        return true;
+    }
+    
+    private void exportConfig() {
         try {
             String configJson = vpnConfigs[currentConfigIndex];
             Gson gson = new Gson();
@@ -157,19 +174,35 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
             statusText.setText("کانفیگ ذخیره شد: " + fileName);
             Toast.makeText(this, "کانفیگ در پوشه Downloads ذخیره شد", Toast.LENGTH_LONG).show();
             
+            // اشتراک‌گذاری فایل
+            shareFile(configFile);
+            
         } catch (IOException e) {
             Toast.makeText(this, "خطا در ذخیره کانفیگ: " + e.getMessage(), Toast.LENGTH_SHORT).show();
         }
     }
     
+    private void shareFile(File file) {
+        Uri fileUri = FileProvider.getUriForFile(this, getPackageName() + ".provider", file);
+        
+        Intent shareIntent = new Intent(Intent.ACTION_SEND);
+        shareIntent.setType("application/json");
+        shareIntent.putExtra(Intent.EXTRA_STREAM, fileUri);
+        shareIntent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+        
+        startActivity(Intent.createChooser(shareIntent, "اشتراک‌گذاری کانفیگ"));
+    }
+    
     private void requestStoragePermission() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-            if (checkSelfPermission(android.Manifest.permission.WRITE_EXTERNAL_STORAGE) 
-                != PackageManager.PERMISSION_GRANTED) {
-                ActivityCompat.requestPermissions(this,
-                    new String[]{android.Manifest.permission.WRITE_EXTERNAL_STORAGE},
-                    STORAGE_PERMISSION_CODE);
+            if (shouldShowRequestPermissionRationale(android.Manifest.permission.WRITE_EXTERNAL_STORAGE)) {
+                // نمایش توضیح برای کاربر
+                Toast.makeText(this, "برای ذخیره کانفیگ نیاز به مجوز ذخیره‌سازی داریم", Toast.LENGTH_LONG).show();
             }
+            
+            ActivityCompat.requestPermissions(this,
+                new String[]{android.Manifest.permission.WRITE_EXTERNAL_STORAGE},
+                STORAGE_PERMISSION_CODE);
         }
     }
     
@@ -179,9 +212,31 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
         if (requestCode == STORAGE_PERMISSION_CODE) {
             if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
                 Toast.makeText(this, "مجوز ذخیره‌سازی داده شد", Toast.LENGTH_SHORT).show();
+                exportConfig();
             } else {
-                Toast.makeText(this, "مجوز ذخیره‌سازی رد شد", Toast.LENGTH_SHORT).show();
+                Toast.makeText(this, "مجوز ذخیره‌سازی رد شد. می‌توانید از طریق اشتراک‌گذاری استفاده کنید", Toast.LENGTH_LONG).show();
+                
+                // اشتراک‌گذاری مستقیم محتوا بدون نیاز به ذخیره فایل
+                shareConfigContent();
             }
+        }
+    }
+    
+    private void shareConfigContent() {
+        try {
+            String configJson = vpnConfigs[currentConfigIndex];
+            Gson gson = new Gson();
+            JsonObject config = gson.fromJson(configJson, JsonObject.class);
+            
+            Intent shareIntent = new Intent(Intent.ACTION_SEND);
+            shareIntent.setType("text/plain");
+            shareIntent.putExtra(Intent.EXTRA_TEXT, configJson);
+            shareIntent.putExtra(Intent.EXTRA_SUBJECT, config.get("name").getAsString() + " Configuration");
+            
+            startActivity(Intent.createChooser(shareIntent, "اشتراک‌گذاری کانفیگ"));
+            
+        } catch (Exception e) {
+            Toast.makeText(this, "خطا در اشتراک‌گذاری کانفیگ", Toast.LENGTH_SHORT).show();
         }
     }
     
@@ -197,7 +252,7 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
             String server = config.get("server").getAsString();
             int port = config.get("port").getAsInt();
             
-            statusText.setText(String.format("انتخاب شده: %s\\nسرور: %s:%d", name, server, port));
+            statusText.setText(String.format("انتخاب شده: %s\nسرور: %s:%d", name, server, port));
         } catch (Exception e) {
             statusText.setText("کانفیگ انتخاب شد: " + (position + 1));
         }
