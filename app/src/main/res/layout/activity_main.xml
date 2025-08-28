@@ -13,7 +13,13 @@
         android:text="PidaVPN"
         android:textSize="24sp"
         android:textStyle="bold"
-        android:layout_marginBottom="30dp"/>
+        android:layout_marginBottom="20dp"/>
+
+    <Spinner
+        android:id="@+id/configSpinner"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="20dp"/>
 
     <Button
         android:id="@+id/connectButton"
