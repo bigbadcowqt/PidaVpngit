@@ -1,7 +1,11 @@
 package com.pidavpn.app;
 
 import androidx.appcompat.app.AppCompatActivity;
+import android.content.ComponentName;
+import android.content.Intent;
+import android.content.ServiceConnection;
 import android.os.Bundle;
+import android.os.IBinder;
 import android.view.View;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
@@ -16,7 +20,8 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
     private Button connectButton, disconnectButton;
     private TextView statusText;
     private Spinner configSpinner;
-    private boolean isConnected = false;
+    private V2RayVpnService vpnService;
+    private boolean isBound = false;
     
     // کانفیگ‌های واقعی شما
     private final String[] vpnConfigs = {
@@ -31,6 +36,21 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
     };
     
     private int currentConfigIndex = 0;
+    
+    private ServiceConnection connection = new ServiceConnection() {
+        @Override
+        public void onServiceConnected(ComponentName className, IBinder service) {
+            V2RayVpnService.LocalBinder binder = (V2RayVpnService.LocalBinder) service;
+            vpnService = binder.getService();
+            isBound = true;
+            updateUI();
+        }
+        
+        @Override
+        public void onServiceDisconnected(ComponentName arg0) {
+            isBound = false;
+        }
+    };
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -49,22 +69,30 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
         connectButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                if (!isConnected) {
-                    connectToVpn();
-                }
+                connectToVpn();
             }
         });
         
         disconnectButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                if (isConnected) {
-                    disconnectFromVpn();
-                }
+                disconnectFromVpn();
             }
         });
         
-        updateUI();
+        // Start and bind to the VPN service
+        Intent intent = new Intent(this, V2RayVpnService.class);
+        startService(intent);
+        bindService(intent, connection, BIND_AUTO_CREATE);
+    }
+    
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        if (isBound) {
+            unbindService(connection);
+            isBound = false;
+        }
     }
     
     private void setupConfigSpinner() {
@@ -88,50 +116,53 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
     }
     
     private void connectToVpn() {
-        String configJson = vpnConfigs[currentConfigIndex];
-        
-        try {
-            Gson gson = new Gson();
-            JsonObject config = gson.fromJson(configJson, JsonObject.class);
+        if (isBound && vpnService != null && !vpnService.isRunning()) {
+            String configJson = vpnConfigs[currentConfigIndex];
             
-            String server = config.get("server").getAsString();
-            int port = config.get("port").getAsInt();
-            String protocol = config.get("protocol").getAsString();
-            String id = config.get("id").getAsString();
-            String name = config.get("name").getAsString();
-            
-            // شبیه‌سازی اتصال
-            isConnected = true;
-            updateUI();
-            
-            // نمایش اطلاعات اتصال
-            String statusMessage = String.format("متصل به: %s\\nسرور: %s:%d\\nپروتکل: %s\\nID: %s", 
-                name, server, port, protocol, id.substring(0, 8) + "...");
-            statusText.setText(statusMessage);
-            
-            Toast.makeText(this, "اتصال به " + name + " برقرار شد", Toast.LENGTH_SHORT).show();
-            
-        } catch (Exception e) {
-            Toast.makeText(this, "خطا در پردازش کانفیگ: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+            try {
+                Gson gson = new Gson();
+                JsonObject config = gson.fromJson(configJson, JsonObject.class);
+                
+                String name = config.get("name").getAsString();
+                
+                Intent intent = new Intent(this, V2RayVpnService.class);
+                intent.setAction("connect");
+                intent.putExtra("config", configJson);
+                startService(intent);
+                
+                statusText.setText("در حال اتصال به: " + name);
+                Toast.makeText(this, "در حال اتصال به " + name, Toast.LENGTH_SHORT).show();
+                
+            } catch (Exception e) {
+                Toast.makeText(this, "خطا در پردازش کانفیگ", Toast.LENGTH_SHORT).show();
+            }
         }
     }
     
     private void disconnectFromVpn() {
-        isConnected = false;
-        updateUI();
-        statusText.setText("آماده برای اتصال");
-        Toast.makeText(this, "اتصال قطع شد", Toast.LENGTH_SHORT).show();
+        if (isBound && vpnService != null && vpnService.isRunning()) {
+            Intent intent = new Intent(this, V2RayVpnService.class);
+            intent.setAction("disconnect");
+            startService(intent);
+            
+            statusText.setText("آماده برای اتصال");
+            Toast.makeText(this, "در حال قطع اتصال", Toast.LENGTH_SHORT).show();
+        }
     }
     
     private void updateUI() {
-        if (isConnected) {
-            connectButton.setEnabled(false);
-            disconnectButton.setEnabled(true);
-            configSpinner.setEnabled(false);
-        } else {
-            connectButton.setEnabled(true);
-            disconnectButton.setEnabled(false);
-            configSpinner.setEnabled(true);
+        if (isBound && vpnService != null) {
+            if (vpnService.isRunning()) {
+                connectButton.setEnabled(false);
+                disconnectButton.setEnabled(true);
+                configSpinner.setEnabled(false);
+                statusText.setText("متصل شده");
+            } else {
+                connectButton.setEnabled(true);
+                disconnectButton.setEnabled(false);
+                configSpinner.setEnabled(true);
+                statusText.setText("آماده برای اتصال");
+            }
         }
     }
     
