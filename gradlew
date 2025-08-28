@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+#!/usr/bin/env sh
 
 ##############################################################################
 ##
@@ -97,7 +97,7 @@ if [ "$cygwin" = "false" ] && [ "$darwin" = "false" ] && [ "$nonstop" = "false" 
     fi
 fi
 
-# For Darwin, add options to specify how the application appears in the dock
+# For Darwin, add options to specify how the application appears in the dock.
 if $darwin; then
     GRADLE_OPTS="$GRADLE_OPTS \"-Xdock:name=$APP_NAME\" \"-Xdock:icon=$APP_HOME/media/gradle.icns\""
 fi
@@ -133,7 +133,7 @@ if [ "$cygwin" = "true" ] || [ "$msys" = "true" ] ; then
     # Split the argument list into two parts: the arguments to be converted and the arguments to be passed through
     eval set dummy $newargs
     shift
-    if [ $# -gt 0 ] ; then
+    if [ $? -gt 0 ] ; then
         JAVACMD="$JAVACMD -cp '$CLASSPATH' org.gradle.wrapper.GradleWrapperMain \"$@\""
     else
         JAVACMD="$JAVACMD -cp '$CLASSPATH' org.gradle.wrapper.GradleWrapperMain"
@@ -148,5 +148,8 @@ save () {
     echo " "
 }
 APP_ARGS=$(save "$@")
+
+# Collect all arguments for the java command, following the shell quoting and substitution rules
+eval set -- $DEFAULT_JVM_OPTS $JAVA_OPTS $GRADLE_OPTS "\"-Dorg.gradle.appname=$APP_BASE_NAME\"" -classpath "\"$CLASSPATH\"" org.gradle.wrapper.GradleWrapperMain "$APP_ARGS"
 
 exec "$JAVACMD" "$@"
