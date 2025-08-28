@@ -31,11 +31,9 @@ dependencies {
     implementation 'com.google.android.material:material:1.9.0'
     implementation 'androidx.constraintlayout:constraintlayout:2.1.4'
     
-    // کتابخانه‌های لازم برای VPN (نسخه‌های معتبر)
-    implementation 'org.slf4j:slf4j-android:1.7.36'
-    implementation 'com.github.2dust:libv2ray:10.10.1'  // کتابخانه معتبر V2Ray
-    implementation 'androidx.preference:preference:1.2.0'
-    
     // کتابخانه برای مدیریت کانفیگ‌های JSON
     implementation 'com.google.code.gson:gson:2.10.1'
+    
+    // کتابخانه برای ذخیره‌سازی ترجیحات
+    implementation 'androidx.preference:preference:1.2.0'
 }
